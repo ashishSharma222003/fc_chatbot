@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+pydantic
+pydantic-settings
+python-dotenv
+sqlalchemy
+pandas
+tiktoken
+# Vector DB client (example: qdrant-client or chromadb)
+# qdrant-client 
+# OpenAI or other LLM client
+# openai
+# langchain (optional, or specific components)
