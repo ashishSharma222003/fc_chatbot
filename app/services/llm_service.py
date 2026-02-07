@@ -8,7 +8,7 @@ abstracting the specific API details. It uses tiktoken for accurate token counti
 import tiktoken
 from openai import AsyncOpenAI
 import json
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, AsyncGenerator
 from app.core.config import settings
 
 class LLMService:
