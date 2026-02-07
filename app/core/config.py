@@ -10,7 +10,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     PROJECT_NAME: str = "FC Chatbot"
     API_V1_STR: str = "/api/v1"
-    
+    OPENAI_API_KEY: str
     # Add other settings here (DB, Auth, etc.)
 
     class Config:

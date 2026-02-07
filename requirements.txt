@@ -9,5 +9,6 @@ tiktoken
 # Vector DB client (example: qdrant-client or chromadb)
 # qdrant-client 
 # OpenAI or other LLM client
-# openai
+openai
+sentence-transformers
 # langchain (optional, or specific components)
