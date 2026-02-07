@@ -12,4 +12,5 @@ tiktoken
 openai
 sentence-transformers
 pinecone-client
+scikit-learn
 # langchain (optional, or specific components)
