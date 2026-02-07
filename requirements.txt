@@ -11,4 +11,5 @@ tiktoken
 # OpenAI or other LLM client
 openai
 sentence-transformers
+pinecone-client
 # langchain (optional, or specific components)
