@@ -1,22 +1,19 @@
-"""
-Chat Schemas
-
-This file defines Pydantic models for chat-related data transfer objects (DTOs).
-It structures the request bodies for chat messages and the response format,
-ensuring strict typing and validation for API interactions.
-"""
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Dict, Any, Union
 
-class ChatMessage(BaseModel):
+class Message(BaseModel):
     role: str
     content: str
 
 class ChatRequest(BaseModel):
-    messages: List[ChatMessage]
-    session_id: str = Field(..., description="Unique identifier for the chat session")
+    query: str
+    user_id: int # Assuming Int ID based on models, but check if user wants string/int. Model says Integer.
+    session_id: str
+    mode: str = Field("simple", pattern="^(simple|detailed)$") # 'simple' or 'detailed'
+    metadata: Optional[Dict[str, Any]] = None
 
 class ChatResponse(BaseModel):
     answer: str
-    sources: Optional[List[str]] = None
-    token_usage: int = Field(0, description="Total tokens used for this turn")
+    session_id: str
+    chunks_used: List[Dict[str, Any]] = []
+    memory_saved: Optional[str] = None

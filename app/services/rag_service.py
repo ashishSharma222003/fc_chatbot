@@ -20,9 +20,10 @@ class RAGService:
         self.vector_store = VectorStore()
         self.llm_service = LLMService()
 
-    async def generate_quick_answer(self, query: str, user_id: str, session_id: str, recent_history: List[Dict]) -> tuple[RAGResponse, List[Dict]]:
+    async def generate_quick_answer(self, query: str, user_id: str, session_id: str, recent_history: List[Dict]) -> tuple[RAGResponse, List[Dict], Dict[str, int]]:
         """
         Generates a structured answer to the user query using RAG.
+        Returns: (RAGResponse, source_chunks, token_usage)
         """
         # 1. Parallel Context Retrieval
         memory_task = self.memory_service.search_memory(query, user_id=user_id, session_id=session_id)
@@ -37,7 +38,7 @@ class RAGService:
         # We need a schema for the LLM to follow. We can reuse the Pydantic model's JSON schema.
         response_schema = RAGResponse.model_json_schema()
         
-        llm_response_dict = await self.llm_service.get_structured_response(
+        llm_response_dict, usage = await self.llm_service.get_structured_response(
             user_prompt=user_prompt,
             system_prompt=system_prompt,
             schema=response_schema
@@ -52,7 +53,7 @@ class RAGService:
             # await self.memory_service.add_memory(rag_response.memory_to_save, user_id, session_id)
              self.memory_service.add_memory(rag_response.memory_to_save, user_id, session_id)
 
-        return rag_response,knowledge_chunks
+        return rag_response, knowledge_chunks, usage
 
     async def generate_answer_stream(self, query: str, user_id: str, session_id: str, recent_history: List[Dict]) -> AsyncGenerator[str, None]:
         """
@@ -78,10 +79,13 @@ class RAGService:
         async for chunk in self.llm_service.generate_stream(user_prompt, system_prompt):
             if chunk:
                 yield chunk
-    async def generate_detailed_answer(self, query: str, user_id: str, session_id: str, recent_history: List[Dict],metadata:Optional[Dict[str,Any]]=None) -> tuple[RAGResponse, List[Dict]]:
+    async def generate_detailed_answer(self, query: str, user_id: str, session_id: str, recent_history: List[Dict], metadata: Optional[Dict[str, Any]] = None) -> tuple[RAGResponse, List[Dict], Dict[str, int]]:
         """
         Generates a detailed answer using query expansion and parallel retrieval.
+        Returns: (RAGResponse, source_chunks, token_usage)
         """
+        total_tokens = {"input_tokens": 0, "output_tokens": 0}
+
         # 1. Generate Query Plan
         plan_system_prompt = """You are an expert information retriever. 
         Break down the user's complex query into distinct sub-queries to maximize retrieval coverage from the knowledge base.
@@ -97,11 +101,14 @@ class RAGService:
         from app.schemas.rag import QueryPlan # Local import to avoid circular dependency if any
         plan_schema = QueryPlan.model_json_schema()
 
-        plan_dict = await self.llm_service.get_structured_response(
+        plan_dict, plan_usage = await self.llm_service.get_structured_response(
             user_prompt=plan_user_prompt,
             system_prompt=plan_system_prompt,
             schema=plan_schema
         )
+        total_tokens["input_tokens"] += plan_usage["input_tokens"]
+        total_tokens["output_tokens"] += plan_usage["output_tokens"]
+        
         query_plan = QueryPlan(**plan_dict)
         
         # 2. Parallel Execution
@@ -135,11 +142,13 @@ class RAGService:
         system_prompt, user_prompt = self._construct_prompts(query, memories, knowledge_chunks, recent_history)
         
         response_schema = RAGResponse.model_json_schema()
-        llm_response_dict = await self.llm_service.get_structured_response(
+        llm_response_dict, answer_usage = await self.llm_service.get_structured_response(
             user_prompt=user_prompt,
             system_prompt=system_prompt,
             schema=response_schema
         )
+        total_tokens["input_tokens"] += answer_usage["input_tokens"]
+        total_tokens["output_tokens"] += answer_usage["output_tokens"]
         
         rag_response = RAGResponse(**llm_response_dict)
         
@@ -147,7 +156,7 @@ class RAGService:
         if rag_response.memory_to_save:
              self.memory_service.add_memory(rag_response.memory_to_save, user_id, session_id)
 
-        return rag_response, knowledge_chunks
+        return rag_response, knowledge_chunks, total_tokens
     def _construct_prompts(self, query: str, memories: List[Dict], knowledge_chunks: List[Dict], recent_history: List[Dict]) -> tuple[str, str]:
         """
         Constructs system and user prompts with context.
