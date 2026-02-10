@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str
     PINECONE_API_KEY: str
     PINECONE_INDEX_NAME: str
-    # Add other settings here (DB, Auth, etc.)
+    DATABASE_URL: str = "sqlite:///./sql_app.db"
 
     class Config:
         env_file = ".env"
